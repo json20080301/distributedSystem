@@ -1,0 +1,69 @@
+----REDIS 配置环境-------------
+cd /usr/local/redis-3.2.6/src
+
+3主3从六个redis进程
+
+批量删除节点进程
+ps -ef|grep 800| grep redis-server |awk '{print $2}' |xargs kill -9
+
+集群配置过程
+1.编写redis.conf模板文件 （以下是配置文件的部分内容，8001都是需要被替换的）
+
+port 8001
+pidfile "/var/run/redis_8001.pid"
+daemonize yes
+logfile "redis_8001.log"
+
+dbfilename "dump8001.rdb"
+
+dir "/usr/local/cluster-test"
+
+appendfilename "appendonly8001.aof"
+cluster-config-file "nodes-8001.conf"
+
+2.拷贝到各个节点目录,并替换对应的端口
+cp redis.conf /usr/local/cluster-test/<8001-8006端口>/
+sed -i "s/8001/8002/g" /usr/local/cluster-test/8002/redis.conf
+
+3.启动各个节点
+cd /usr/local/cluster-test
+
+redis-server 8003/redis.conf
+tail -f redis_8003.log
+
+ 
+
+4.创建集群
+cd /usr/local/redis-3.2.6/src
+redis-trib.rb  create  --replicas  1   100.100.225.22:8001  100.100.225.22:8002  100.100.225.22:8003  100.100.225.22:8004  100.100.225.22:8005  100.100.225.22:8006
+
+5. redis-cli -c -h 100.100.225.22 -p 8001 -a abc  
+-c 表示集群方式连接到redis
+
+#打印集群的信息
+cluster info
+
+#列出集群当前已知的所有节点（node），以及这些节点的相关信息。
+cluster nodes
+
+数据验证方式：
+往其中一个节点设值，其他节点连接到集群后也可以访问
+
+6.集群设置密码
+集群构建完再通过config set + config rewrite命令逐个实例设置密码
+对集群设置密码，requirepass和masterauth都需要设置（主从是需要相互替换的，所以requirepass，masterauth必须设置且值要一样）
+各个节点密码都必须一致，否则Redirected就会失败
+-----------------------------------------
+config set masterauth   abc
+config set requirepass   abc 
+config rewrite 
+
+---------------------------------------------
+ruby 安装本地gem
+下载.gem文件，用cd到.gem的所在目录，然后执行下面的命令：
+
+gem install --local filename.gem
+
+或者执行命令的时候带有.gem文件的路径名。
+
+gem install --local F:/ruby/gem/filename.gem
