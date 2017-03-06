@@ -1,0 +1,149 @@
+
+1	Mongo数据库有三种工作模式 
+单机，复制集（主从模式3.2版本以后已经抛弃使用），集群（分片+复制集）；三种工作模式比较：
+单机：部署简单，但不具备高可用性，发生单点故障时，服务不可用；适用场景：适合低频访问的应用
+复制集：保证高可用性：当主节点宕机时，会从复制集选择一个新节点来作为主节点；读写分离：在主节点写数据，从节点负责数据读取；适用场景：适合GB级别的数据量（COLLECTION小于1TB时），高频访问；
+集群（分片+复制集）：当COLLECTION数据量达到TB级别，就需要做横向扩容，这个时候就需要适用数据分片，把数据存储到不同的物理机器上。
+
+1.1	单机部署模式：
+mongod --bind_ip <IP>  --port <PORT> -- dbpath <dbpath> --logpath <logpath> –directoryperdb  --pidfilepath <pidfile> --fork
+::参数含义解释：
+::--bind_ip <IP>: 保证非本机的mongo客户端可以访问到mongo服务；IP填mongod所在机器的IP
+::--shardsvr ：表示提供分片服务
+::--replSet  s0Set ：表示所属复制集为“s0Set”
+::--port  <PORT>：运行端口<PORT>
+::--dbpath <dbpath> ：数据文件存储目录 如：shard/s0
+::--logpath <logpath>  日志文件路径 如： shard/log/s0.log
+::--directoryperdb  数据文件存储方式 一个目录对应的一个mongo数据库
+--pidfilepath  --fork 搭配适用，记录当前mongo启动后的进程Pid 
+ 详见https://docs.mongodb.com/v3.2/reference/program/mongod/#bin.mongod
+也可以适用配置文件的形式https://docs.mongodb.com/v3.2/reference/configuration-options/
+
+1.2	复制集部署模式：
+复制集一般由3个以上的节点构成，3个节点对应3个不同的物理主机；3个节点的作用分别是一主一从一备份，这也是国内云mongo的常规做法。节点的角色定义在mongod实例启动完成后进行定义。
+1.在3个物理主机上启动mongod,与单机模式相比只多了一个--replSet  <setName>;如
+mongod  --replSet  s0Set  --bind_ip  192.168.10.2  --port  27017 --dbpath shard/s0 --logpath shard/log/s0.log –directoryperdb 表示该mongo数据库属于s0Set这个复制集;
+2.初始化复制集
+https://docs.mongodb.com/v3.2/reference/command/replSetInitiate/#dbcmd.replSetInitiate
+如：
+config = {
+    _id : "my_replica_set",
+     members : [
+         {_id : 0, host : "rs1.example.net:27017"},
+         {_id : 1, host : "rs2.example.net:27017"},
+         {_id : 2, host : "rs3.example.net", "priority" : 0,
+  "hidden" : true } 
+     ]
+}
+rs.initiate(config)
+备份节点相关介绍：https://docs.mongodb.com/manual/core/replica-set-hidden-member/#read-operations
+3.副本集节点的管理：
+新增节点：rs.add(“host:port”)
+删除节点：rs.remove(“host:port”)
+或者rs.reconfig
+https://docs.mongodb.com/manual/reference/method/rs.reconfig/#rs.reconfig
+
+
+1.3	集群部署模式（分片+复制集）：
+集群部署模式
+https://docs.mongodb.com/v3.2/core/sharded-cluster-components/
+https://docs.mongodb.com/v3.2/tutorial/deploy-shard-cluster/ 
+
+集群模式下有3种类型的程序：路由服务（router），配置服务(config servers), 数据分片（shard）；
+Router：最终的数据库使用者是通过router来访问mongo数据库的。
+config server：内置的config数据存放分片的元数据，如哪些数据库的集合开启了分片，具体的集合数据都存放在那个shard节点上；Router通过访问config server 就能查询到需要的数据在哪个分片节点上，然后读取并返回给客户端
+shard server ： 存放实际的数据文件。
+一个分片对应一个复制集，一个复制集对应3台物理主机；一个集群通常有2个以上的分片，那么一个集群就需要6台物理主机；config server，Router只存放内置数据库，不会占用多少物理空间，可以与shard server共用 。
+ 
+1.启动shard server分片复制集
+mongod --shardsvr  --replSet  s0Set --port 20000 --dbpath shard/s0 --logpath shard/log/s0.log --directoryperdb
+::参数含义解释：
+::--shardsvr ：表示提供分片服务
+::--replSet  s0Set ：表示所属复制集为“s0Set”
+::--port  20000  ：运行端口20000
+::--dbpath shard/s0 ：数据文件存储目录 shard/s0
+::--logpath shard/log/s0.log  日志文件路径 shard/log/s0.log
+::--directoryperdb  数据文件存储方式 一个目录对应的一个mongo数据库 directory per db
+：：--bind_ip 192.168.1.103
+2.启动config server
+mongod --configsvr --replSet  configSet --port 30001 --dbpath shard/config1 --logpath shard/log/config1.log --directoryperdb
+::参数含义解释：
+::--configsvr ：表示提供分片配置服务
+::--replSet  configSet ：表示所属复制集为“configSet”
+::--port  30000  ：运行端口30000
+::--dbpath  shard/config ：数据文件存储目录  shard/config
+::--logpath shard/log/config.log  日志文件路径 shard/log/config.log
+::--directoryperdb  数据文件存储方式 一个目录对应的一个mongo数据库
+3.启动router
+mongos --port 40000  --configdb localhost:30000 --logpath shard/log/route.log 
+::参数含义解释：
+::--configdb localhost:30000 ：config server的IP端口，Config server也是副本集时：
+mongos --configdb <configReplSetName>/cfg1.example.net:27017,cfg2.example.net:27017,...
+::--port  40000  ：运行端口40000
+::--fork   后台运行
+::--logpath shard/log/route.log  日志文件路径 shard/log/route.log
+::--logappend  添加日志而不是覆盖原有日志
+::mongos 作为路由服务，不需要自己的数据库所以没有配置项  --dbpath  --directoryperdb 
+
+4.客户端连接集群
+应用程序或者客户端需要访问集群，连接的IP端口应该是mongos使用的IP端口;
+
+5.添加分片到集群
+客户端访问的mongos是通过configserver来间接获取分片数据，需要将shardserver注册到configserver中，这个动作就是添加分片：
+sh.addShard( "<replSetName>/s1-mongo1.example.net:27017")
+6.集合数据分片
+sh.enableSharding("<database>")
+sh.shardCollection("<database>.<collection>", { <key> : <direction> } )
+如要对test数据库中的users集合进行分片，则需配置：
+sh.enableSharding("test ")
+sh.shardCollection( "test.users", {  "name" : "hashed" } )
+注意：对集合开启数据分片时，要重点考虑业务场景的需求；如果你的集合数据存储大于1TB，并且查询统计的业务比较简单（比如IM工具聊天记录的存储），可以对集合开启分片；开启分片时要重点考虑分片字段的选择，因为mongo对分片后的集合CRUD有一定的限制，如：
+1.	对集合开启分片后分片字段不可变更；
+2.	分片字段的值第一次插入后不可再变更；
+3.	查询时必须使用分片字段，不然查询会很慢；
+详见：
+https://docs.mongodb.com/v3.2/core/sharded-cluster-requirements/
+https://docs.mongodb.com/v3.2/core/distributed-queries/
+https://docs.mongodb.com/v3.2/reference/limits/#shard-key-limitations
+
+
+如果集合没有开启分片，那么集合的数据只存在于一个shardserver上。
+数据库是否开启分片：可以通过连接mongos查看config的databases集合（partitioned表示是否分片）
+
+集合是否开启分片：右键集合，查看statistics信息的sharded字段
+
+
+7.分片的管理
+注意：分片的新增，删除，数据库分片的开启这些操作必须连接mongos后才能操作；
+分片删除（如果是主分片，必须先执行movePrimary）：https://docs.mongodb.com/v3.2/reference/command/removeShard/#dbcmd.removeShard
+use admin
+db.runCommand( { removeShard : "bristol01" } )
+主分片数据的迁移：
+https://docs.mongodb.com/v3.2/reference/command/movePrimary/#dbcmd.movePrimary
+db.runCommand( { movePrimary: <databaseName>, to: <newPrimaryShard> } )
+8.集群鉴权：
+	单个节点的配置与单服务的配置方式一样，主要的有2点需要注意
+	集群中所有节点的帐号信息应保持一致
+	集群模式下，需要指定一个keyfile,具体操作如下：
+	openssl rand -base64 756 > <path-to-keyfile>
+	chmod 400 <path-to-keyfile>
+	集群中 mongod 或者 mongos启动时要添加--keyFile <file>参数https://docs.mongodb.com/v3.2/reference/program/mongod/#cmdoption--keyFile
+
+1.4	开启数据库鉴权
+https://docs.mongodb.com/v3.2/tutorial/enable-authentication/
+操作步骤：
+1.连接mongod启动的IP,端口，在admin数据库上创建root权限用户
+db.createUser( {
+user: "admin",
+pwd: "admin",
+roles: [ "root" ]
+});   
+root是mongo数据库的超级用户权限
+https://docs.mongodb.com/v3.2/reference/built-in-roles/#superuser-roles
+2.重启所有mongod进程（集群还需要重启Mongos进程）
+单机模式的鉴权：mongod启动时添加—auth；https://docs.mongodb.com/v3.2/reference/program/mongod/#cmdoption-auth
+复制集和集群的鉴权：mongod，mongos启动时添加--keyFile <file>
+https://docs.mongodb.com/v3.2/reference/program/mongod/#cmdoption-keyfile
+https://docs.mongodb.com/v3.2/reference/program/mongos/#cmdoption-keyfile
+
+
