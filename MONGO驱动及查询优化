@@ -1,0 +1,34 @@
+2.2	使用mongo URI连接数据库资源
+https://docs.mongodb.com/manual/reference/connection-string
+java mongo驱动连接mongo 代码示例
+MongoClient  client = new MongoClient(new MongoClientURI(url));
+
+
+2.3	Mongo 单机连接的URI 
+mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
+如：
+mongodb://localhost  连接到本机默认端口(27017)
+mongodb://sysop:moon@localhost 使用用户名sysop和密码moon连接到admin数据库
+mongodb://sysop:moon@localhost/records 使用用户名sysop和密码moon连接到records数据库
+
+2.4	Mongo 复制集连接的URI 
+mongodb://db1.example.net,db2.example.net:2500/?replicaSet=test&connectTimeoutMS=300000
+mongodb://db1.example.net,db2.example.com/?replicaSet=test
+
+mongodb://example1.com,example2.com,example3.com/?replicaSet=test&readPreference=secondary  读写分离，默认读复制集test从节点
+2.5	Mongo 集群连接的URI 
+mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/  连接到分片集群的路由服务（mongos instances）的ip ,端口
+参考资料：
+https://yq.aliyun.com/articles/69380?spm=5176.100239.blogrightarea67120.23.IwdncT
+
+
+https://docs.mongodb.com/v3.2/core/query-plans/
+https://docs.mongodb.com/v3.2/core/query-optimization/
+数据库性能诊断：
+https://docs.mongodb.com/v3.2/reference/command/profile/
+https://docs.mongodb.com/v3.2/administration/analyzing-mongodb-performance/#database-profiling
+
+查询执行计划分析：
+https://docs.mongodb.com/manual/reference/command/explain/
+https://docs.mongodb.com/manual/reference/explain-results/#queryplanner
+
