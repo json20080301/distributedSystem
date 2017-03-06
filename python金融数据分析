@@ -20,6 +20,12 @@ http://dl.download.csdn.net/down10/20130924/e8a988ae9e65377d8b8e041f1fe5ba83.exe
 mariadb数据库
 http://mirror.nodesdirect.com/mariadb//mariadb-10.1.21/winx64-packages/mariadb-10.1.21-winx64.msi
 
+十分钟搞定pandas （Python Data Analysis Library）
+http://www.cnblogs.com/chaosimple/p/4153083.html
+
+DataFrame导入数据库
+http://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.to_sql.html
+
 3.选股界面化工具 PYTHON, 使用FLASK开发选股界面
 PyDev4.5.5
 http://dl.download.csdn.net/down11/20160419/606ab50f6e2a52a19f064c5edba75b1a.zip?response-content-disposition=attachment%3Bfilename%3D%22PyDev%204.5.5.zip%22&OSSAccessKeyId=9q6nvzoJGowBj4q1&Expires=1486953191&Signature=LlRnrsDGMeCxy%2FJyb7c%2BGMia40k%3D
