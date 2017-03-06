@@ -1,0 +1,43 @@
+3.1	Mongo低版本向3.2版本迁移（必须的）
+https://yq.aliyun.com/articles/67120
+1.	建立新的3.x复制集
+2.	mongodump 2.x 复制集的数据
+3.	mongorestore 到3.x复制集
+4.	等待3.x服务稳定，将2.x复制集下线
+
+
+3.2	Mongo 3.2单机升级到复制集（用于高可用场景）
+https://docs.mongodb.com/v3.2/tutorial/convert-standalone-to-replica-set/
+1.	关闭单机的Mongod 进程
+2.	重启Mongod进程，添加mongod启动 —replSet <setName>，详见1.2 ；
+3.	使用客户端连接mongod进程的IP端口
+4.	使用 rs.initiate() 来初始化复制集
+5.	使用rs.add(“<ip><:port>”)向复制集中添加成员
+
+3.3	Mongo 3.2复制集升级到集群分片（用于高可用大数据场景）
+https://docs.mongodb.com/v3.2/tutorial/convert-replica-set-to-replicated-shard-cluster/
+1.	添加 –shardsrv启动参数,重启复制集
+2.	启动集群的config服务和路由服务， 见1.3 集群部署模式
+3.	连接mongos服务，执行添加分片操作，见1.3 集群部署模式
+
+
+3.4	Mongo 3.2集群转化为复制集
+https://docs.mongodb.com/v3.2/tutorial/convert-sharded-cluster-to-replica-set/
+单分片集群转化为复制集：
+关闭集群的config服务，路由服务，重启复制集节点，启动参数去掉 --shardsrv 
+多分片集群转化为复制集：
+1.	建立新的复制集
+2.	将集群数据mongodump出来
+3.	关闭集群服务，将数据mongorestore到新的复制集
+
+3.5	Mongo 3.2集群不是万能的，它的一些操作限制
+对集合开启数据分片时，要重点考虑业务场景的需求；如果你的集合数据存储大于1TB，并且查询统计的业务比较简单（比如IM工具聊天记录的存储），可以对集合开启分片；开启分片时要重点考虑分片字段的选择，因为mongo对分片后的集合CRUD有一定的限制，如：
+1.	对集合开启分片后分片字段不可变更；
+2.	分片字段的值第一次插入后不可再变更；
+3.	查询时必须使用分片字段，不然查询会很慢；
+
+详见：
+https://docs.mongodb.com/v3.2/core/sharded-cluster-requirements/
+https://docs.mongodb.com/v3.2/core/distributed-queries/
+https://docs.mongodb.com/v3.2/reference/limits/#shard-key-limitations
+
