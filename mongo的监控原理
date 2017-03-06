@@ -1,0 +1,23 @@
+单机监控：
+调用mongostat  https://docs.mongodb.com/v3.2/reference/program/mongostat/
+https://docs.mongodb.com/v3.2/reference/command/serverStatus/
+https://docs.mongodb.com/v3.2/reference/command/buildInfo/
+
+复制集监控：
+
+复制集的主机获取：https://docs.mongodb.com/v3.2/reference/command/replSetGetConfig/
+对应3个Mongod进程，主机端口分别填写其中一个mongod启动时使用的bind_ip ,port ；将mongoAgent(监控数据库采集程序)部署到bind_ip所在的主机。
+工作原理：
+mongoAgent会通过rs.conf()找到其他复制集成员，自动监控其余两个mongod进程的运行状态。
+
+shardCluster的监控
+
+工作原理：
+mongoAgent会通过一系列的动作找到集群相关的主机并监控相关mongod进程的运行状态。
+
+1. mongoAgent通过mongos的IP，端口，执行serverStatus 命令，可以得到sharding.configsvrConnectionString； 
+即CONFIG服务对应的复制集主机列表，把复制集成员都找出来并监控。；
+
+2. mongoAgent通过mongos的IP，端口，可以查询config数据库中的shards集合，即可得到分片所使用的副本集配置信息；
+根据分片的副本集就可以把副本集成员都找出来并监控。
+
