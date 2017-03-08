@@ -20,6 +20,8 @@ https://redis.io/download
 
 3.python
 
+cd D:\downloads\Markdown-2.6.8
+python setup.py install 
 
 4.oracle
 
